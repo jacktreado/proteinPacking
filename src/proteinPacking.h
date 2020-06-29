@@ -16,6 +16,7 @@
 
 #include "voro++.hh"
 #include <iostream>
+#include <sstream>
 #include <iomanip>
 #include <string>
 #include <fstream>
@@ -49,18 +50,12 @@ private:
 	double* voroVols;
 	std::vector<int>* voroNeighbors;
 
-	// structure information
-	double* q6;
-
-	// overlap information
-	double* urlj;
-
 	// file information
 	std::ofstream packingFile;
 public:
 	// constructors
 	proteinPacking();
-	proteinPacking(std::string& inputFileString);
+	proteinPacking(std::string& inputFileString, int NMCPTS);
 
 	// destructors
 	~proteinPacking();
@@ -102,8 +97,7 @@ public:
 	std::string getAtom(int atom);
 
 	// calculators
-	void calcMasses();
-	double calcMasses(int residue);
+	void calcMasses(int NMCPTS);
 	void neighbors();
 
 	// printers

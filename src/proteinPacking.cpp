@@ -39,11 +39,9 @@ proteinPacking::proteinPacking(){
 	voroContainer = nullptr;
 	voroVols = nullptr;
 	voroNeighbors = nullptr;
-	q6 = nullptr;
-	urlj = nullptr;
 }
 
-proteinPacking::proteinPacking(string& inputFileString){
+proteinPacking::proteinPacking(string& inputFileString, int NMCPTS){
 	// local variables
 	int i;
 	double rtmp,xtmp,ytmp,ztmp,xmin,xmax,ymin,ymax,zmin,zmax,totalmin,totalmax,boxscale;
@@ -268,12 +266,12 @@ proteinPacking::proteinPacking(string& inputFileString){
 	// loop over residues, set volumes to 0 that change with a new box size
 	for (i=0; i<N; i++){
 		if (lBoxVoro.at(i) - resVoro(i) > 1e-4)
-			setVoroVol(i,-1.0);
+			setVoroVol(i,-1.0*resVoro(i));
 	}
 
 	// calculate everything else
 	cout << "In constructor, now calculating mass" << endl;
-	calcMasses();
+	calcMasses(NMCPTS);
 
 	cout << "In constructor, now calculating neighbors" << endl;
 	neighbors();
@@ -284,46 +282,47 @@ proteinPacking::~proteinPacking(){
 	if (residueSize){
 		delete [] residueSize;
 		residueSize = nullptr;
+		cout << "deleting residueSize.\n";
 	}
 	if (sequence){
 		delete [] sequence;
 		sequence = nullptr;
+		cout << "deleting sequence.\n";
 	}
 	if (atoms){
 		delete [] atoms;
 		atoms = nullptr;
+		cout << "deleting atoms.\n";
 	}
 	if (x){
 		delete [] x;
 		x = nullptr;
+		cout << "deleting x.\n";
 	}
 	if (r){
 		delete [] r;
 		r = nullptr;
+		cout << "deleting r.\n";
 	}
 	if (m){
 		delete [] m;
 		m = nullptr;
+		cout << "deleting m.\n";
 	}
 	if (voroContainer){
 		delete voroContainer;
 		voroContainer = nullptr;
+		cout << "deleting voroContainer.\n";
 	}
 	if (voroVols){
 		delete [] voroVols;
 		voroVols = nullptr;
+		cout << "deleting voroVols.\n";
 	}
 	if (voroNeighbors){
 		delete [] voroNeighbors;
 		voroNeighbors = nullptr;
-	}
-	if (q6){
-		delete [] q6;
-		q6 = nullptr;
-	}
-	if (urlj){
-		delete [] urlj;
-		urlj = nullptr;
+		cout << "deleting voroNeighbors.\n";
 	}
 
 	// close file object
@@ -631,97 +630,8 @@ string proteinPacking::getAtom(int atom){
 
 *****************************/
 
-/*
-void proteinPacking::calcMasses(){
+void proteinPacking::calcMasses(int NMCPTS){
 	// local variables
-	int i;
-
-	// loop over residues, get mass for each residue 
-	for (i=0; i<N; i++)
-		setMass(i,calcMasses(i));
-}
-
-double proteinPacking::calcMasses(int residue){
-	// local variables
-	int ai,pp;
-	int rSize = size(residue);
-	int NMCPTS = 5e4;
-	vector<double> ax(rSize,0.0);
-	vector<double> ay(rSize,0.0);
-	vector<double> az(rSize,0.0);
-	vector<double> ar(rSize,0.0);
-	double xmin=1e6, ymin=1e6, zmin=1e6, xmax=0, ymax=0, zmax=0;
-	double dx,dy,dz,da,boxVolume;
-	double rx,ry,rz;
-	int insideAtom = 0;
-
-	// get positions of each atom relative to CA, get max and min
-	for (ai=0; ai<rSize; ai++){
-		ax.at(ai) = pos(residue,ai,0);
-		ay.at(ai) = pos(residue,ai,1);
-		az.at(ai) = pos(residue,ai,2);
-		ar.at(ai) = rad(residue,ai);
-
-		if (ax.at(ai) > xmax)
-			xmax = ax.at(ai);
-		else if (ax.at(ai) < xmin)
-			xmin = ax.at(ai);
-
-		if (ay.at(ai) > ymax)
-			ymax = ay.at(ai);
-		else if (ay.at(ai) < ymin)
-			ymin = ay.at(ai);
-
-		if (az.at(ai) > zmax)
-			zmax = az.at(ai);
-		else if (az.at(ai) < zmin)
-			zmin = az.at(ai);
-	}
-
-	// make box a little bit larger (by 1 Angstroms)
-	xmin -= 2.0;
-	xmax += 2.0;
-
-	ymin -= 2.0;
-	ymax += 2.0;
-
-	zmin -= 2.0;
-	zmax += 2.0;
-
-	// get box widths
-	dx = xmax - xmin;
-	dy = ymax - ymin; 
-	dz = zmax - zmin;
-	boxVolume = dx*dy*dz;
-
-	// loop over MC points, check for number of points in each atoms
-	for (pp=0; pp<NMCPTS; pp++){
-		// generate random point
-		rx = dx*drand48() + xmin;
-		ry = dy*drand48() + ymin;
-		rz = dz*drand48() + zmin;
-
-		// check if inside atom
-		for (ai=0; ai<rSize; ai++){
-			// distance between atom and pt
-			da = sqrt(pow(rx-ax.at(ai),2) + pow(ry-ay.at(ai),2) + pow(rz-az.at(ai),2));
-
-			// point is inside atom
-			if (da < ar.at(ai)){
-				insideAtom++;
-				break;
-			}
-		}
-	}
-
-	// return fraction of points in atoms
-	return ((double)insideAtom/(double)NMCPTS)*boxVolume;
-}
-*/
-
-void proteinPacking::calcMasses(){
-	// local variables
-	int NMCPTS = 1e7;
 	int i,j,p,hit,tmpOctant;
 	int xb,yb,zb;
 	double xmin=1e6, xmax=0, ymin=1e6, ymax=0, zmin=1e6, zmax=0;
@@ -769,6 +679,7 @@ void proteinPacking::calcMasses(){
 	double skinDepth = 3.0;
 
 	for (i=0; i<NA; i++){
+
 		if (pos(i,0) > (0.5*dx + xmin))
 			xo = 1;
 		else
@@ -844,6 +755,9 @@ void proteinPacking::calcMasses(){
 
 	// run MC integration with octants
 	for (p=0; p<NMCPTS; p++){
+		if (p % 500 == 0)
+			cout << "on mc pt p = " << p << endl;
+
 		// minimum distance reset
 		daMin = 1e6;
 		hit = -1;
@@ -875,7 +789,7 @@ void proteinPacking::calcMasses(){
 		// find minimum distance, only check octants
 		for (j=0; j<octantList[tmpOctant].size(); j++){
 			// get atom to check
-			i = octantList[tmpOctant].at(j);
+			i = octantList[tmpOctant][j];
 
 			// distance between atom and pt
 			da = sqrt(pow(rx-pos(i,0),2) + pow(ry-pos(i,1),2) + pow(rz-pos(i,2),2));
@@ -962,16 +876,16 @@ void proteinPacking::printPackingFraction(){
 
 	// print packing fractions for each residue
 	for (i=0; i<N; i++){
-		packingFile << setw(10) << i+1;
+		packingFile << setw(6) << i+1;
 		packingFile << setw(10) << getSeq(i);
-		packingFile << setw(10) << mass(i);
-		packingFile << setw(10) << resVoro(i);
+		packingFile << setw(15) << mass(i);
+		packingFile << setw(15) << resVoro(i);
 
 		// if voronoi < 0, then on surface and has 0 packing fraction
 		if (resVoro(i)<0)
-			packingFile << setw(10) << 0.0 << endl;
+			packingFile << setw(15) << 0.0 << endl;
 		else
-			packingFile << setw(10) << mass(i)/resVoro(i) << endl;
+			packingFile << setw(15) << mass(i)/resVoro(i) << endl;
 		
 	}
 }
