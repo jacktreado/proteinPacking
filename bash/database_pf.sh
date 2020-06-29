@@ -74,7 +74,7 @@ for f in $dir; do
     outputFileStr=$pfDir/"$baseid"_pf.dat
 
     # echo command to task file
-    echo running params: $inputFileStr $outputFileStr
+    echo running params: $inputFileStr $outputFileStr $NMCPTS
     echo cd `pwd` \; ./$binf $inputFileStr $outputFileStr >> $taskf
 done
 
