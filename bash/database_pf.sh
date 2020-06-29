@@ -5,8 +5,7 @@ db=$1
 NMCPTS=$2
 partition=$3
 time=$4
-min=$5
-max=$6
+max=$5
 
 # directories
 pdbDir=~/project/pdb/$db
@@ -53,10 +52,7 @@ for f in $dir; do
     let fcount=$fcount+1
 
     # test number of files found, to break up job submissions
-    if [[ $fcount -lt $min ]]
-    then
-	   continue
-    elif [[ $fcount -gt $max ]]
+    if [[ $fcount -gt $max ]]
     then
 	   break
     else
@@ -116,7 +112,6 @@ sbatch -t $time $slurmf
 # ====================
 # 1. data base (use syntax from directory name)
 # 2. NMCPTS (number of monte carlo pts for mass calc)
-# 2. partition
-# 3. time
-# 4. min file considered
-# 5. max file considered
+# 3. partition
+# 4. time
+# 5. max number of files considered
