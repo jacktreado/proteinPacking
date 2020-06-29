@@ -71,7 +71,7 @@ for f in $dir; do
 
     # echo command to task file
     echo running params: $inputFileStr $outputFileStr $NMCPTS
-    echo cd `pwd` \; ./$binf $inputFileStr $outputFileStr >> $taskf
+    echo cd `pwd` \; ./$binf $inputFileStr $outputFileStr $NMCPTS >> $taskf
 done
 
 if [[ ! -f "$taskf" ]]
