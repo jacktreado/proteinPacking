@@ -253,7 +253,6 @@ proteinPacking::proteinPacking(string& inputFileString){
 	// check larger box
 	c_loop_all clLarger(largerBox);
 	vector<double> lBoxVoro(N,0.0);
-	int residueIndex = 0;
 
 	// check larger volumes
 	cout << "Looping over volumes in larger box" << endl;
