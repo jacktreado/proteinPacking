@@ -14,8 +14,8 @@ int main()
 	int i, NR;
 
 	// file strings
-	string inputFileStr 	= "/Users/JackTreado/_pv/boxmethod/data/8abp_H.dat";
-	string voronoiFileStr 	= "/Users/JackTreado/Jamming/ProteinVoids/pdb/vorodata/data/8abp_H.voro";
+	string inputFileStr 	= "/Users/JackTreado/_pv/pdb/casp/dat/T0767TS300_4_H.dat";
+	string voronoiFileStr 	= "/Users/JackTreado/Jamming/ProteinVoids/pdb/vorodata/data/T0767TS300_4_H.voro";
 
 	// instantiate object
 	cout << "Instantiating object..." << endl;
@@ -38,12 +38,12 @@ int main()
 
 	// loop over specific residues, print voronoi information
 	vector<int> residues;
-	// residues.push_back(78);
-	// residues.push_back(103);
-	for (i=0; i<N; i++){
-		if (pobj.resVoro(i) > 0)
-			residues.push_back(i);
-	}
+	residues.push_back(112);
+	residues.push_back(205);
+	// for (i=0; i<N; i++){
+	// 	if (pobj.resVoro(i) > 0)
+	// 		residues.push_back(i);
+	// }
 	NR = residues.size();
 
 	// loop over residues, print voronoi information
@@ -55,7 +55,7 @@ int main()
 	pobj.printToVoroFile(pobj.getBound(2,0));
 	pobj.printToVoroFile(pobj.getBound(2,1));
 	for (i=0; i<NR; i++){
-		cout << "** printing voronoi cell for " << residues.at(i) << endl;
+		cout << "** printing voronoi cell for " << pobj.getSeq(residues.at(i)) << " " << residues.at(i) << endl;
 		pobj.printSingleVoronoiCell(residues.at(i));
 	}
 

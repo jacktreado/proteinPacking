@@ -12,8 +12,8 @@ using namespace std;
 using namespace voro;
 
 // global constants
-#define NCELLS 4
-#define NINIT 8
+#define NCELLS 3
+#define NINIT 5
 #define NDIM 3
 const double PI = 4*atan(1);
 
@@ -268,19 +268,20 @@ proteinPacking::proteinPacking(string& inputFileString){
 	c_loop_all cl(*voroContainer);
 
 	// get initial volumes
+	vector<double> atomicvols(NA,-1.0);
 	cout << "Looping over initial volumes in normal box" << endl;
 	if (cl.start()) do if(voroContainer->compute_cell(c,cl)) {	
 		// get residue index
 		residueIndex = resID(cl.pid());
 
+		atomicvols[cl.pid()] = c.volume();
+
 		// increment volume on residueIndex
 		setVoroVol(residueIndex,resVoro(residueIndex)+c.volume());
 	} while (cl.inc());
 
-	// loop over residues, set volumes to 0 that change with a new box size
-	for (i=0; i<N; i++){
-		
-	}
+	for (i=0; i<NA; i++)
+		cout << "atomic voro volume : i = " << i << ", avol = " << atomicvols[i] << endl;
 
 	// compute neighbors for each residue
 	neighbors();
@@ -484,7 +485,7 @@ int proteinPacking::cumulativeNumberOfAtoms(int residue){
 	int i;
 	int val = 0;
 
-	for (i=0; i<residue-1; i++)
+	for (i=0; i<residue; i++)
 		val += size(i);
 
 	return val;
@@ -902,6 +903,19 @@ void proteinPacking::printPackingFraction(){
 	// print header
 	packingFile << N << endl;
 
+	// print box volumes
+	packingFile << setw(20) << getBound(0,0);
+	packingFile << setw(20) << getBound(0,1);
+	packingFile << endl;
+
+	packingFile << setw(20) << getBound(1,0);
+	packingFile << setw(20) << getBound(1,1);
+	packingFile << endl;
+
+	packingFile << setw(20) << getBound(2,0);
+	packingFile << setw(20) << getBound(2,1);
+	packingFile << endl;
+
 	// print packing fractions for each residue
 	for (i=0; i<N; i++){
 		packingFile << setw(6) << i+1;
@@ -910,7 +924,7 @@ void proteinPacking::printPackingFraction(){
 		packingFile << setw(25) << resVoro(i);
 
 		// if voronoi < 0, then on surface and has 0 packing fraction
-		if (resVoro(i)<0)
+		if (resVoro(i) < 0)
 			packingFile << setw(25) << 0.0 << endl;
 		else
 			packingFile << setw(25) << mass(i)/resVoro(i) << endl;
@@ -965,6 +979,12 @@ void proteinPacking::printSingleVoronoiCell(int i){
 		if (atest != atot){
 			cout << "	** ERROR: atom labelling done incorrectly in printSingleVoronoiCell(), ending. " << endl;
 			exit(1);
+		}
+		else{
+			// cout << "-- on residue " << i << ", atomid = " << aloc << endl;
+			// cout << "	** resid = " << resID(atot) << endl;
+			// cout << "	** cumsum = " << cumulativeNumberOfAtoms(i) << endl;
+			// cout << "	** atot = " << atot << endl;
 		}
 
 		// print atomic information corresponding to this residue
