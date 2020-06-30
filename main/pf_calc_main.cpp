@@ -35,9 +35,6 @@ int main(int argc, char *argv[]){
 	cout << "Calculating masses..." << endl;
 	pobj.calcMasses(nmcpts);
 
-	cout << "Calculating neighbors..." << endl;
-	pobj.neighbors();
-
 	// print packing fraction data to file
 	cout << "Opening packing file " << outputFileStr << endl;
 	pobj.openPackingFile(outputFileStr);
