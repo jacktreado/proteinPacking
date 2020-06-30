@@ -12,8 +12,8 @@ using namespace std;
 using namespace voro;
 
 // global constants
-#define NCELLS 5
-#define NINIT 20
+#define NCELLS 4
+#define NINIT 8
 #define NDIM 3
 const double PI = 4*atan(1);
 
@@ -41,15 +41,16 @@ proteinPacking::proteinPacking(){
 	voroNeighbors = nullptr;
 }
 
-proteinPacking::proteinPacking(string& inputFileString, int NMCPTS){
+proteinPacking::proteinPacking(string& inputFileString){
 	// local variables
-	int i;
+	int i, j;
 	double rtmp,xtmp,ytmp,ztmp,xmin,xmax,ymin,ymax,zmin,zmax,totalmin,totalmax,boxscale;
 	int idtmp,atomCounter,resCounter,oldId;
 	string restmp,atomtmp;
 	char chaintmp;
-	// voro::voronoicell_neighbor c; // initially try the standard cell class
-	voronoicell c;
+	voro::voronoicell_neighbor c;
+	int residueIndex;
+	double boxChangeTol = 1e-4;
 
 
 	// open input file object
@@ -176,12 +177,12 @@ proteinPacking::proteinPacking(string& inputFileString, int NMCPTS){
 			zmin = ztmp;
 	}
 	cout << "Done reading in values from file " << inputFileString << endl;
-
-
-	// setup container for voronoi
-	cout << "Setting up container for voronoi calculation." << endl;
+	cout << "xmin = " << xmin << ", xmax = " << xmax << endl;
+	cout << "ymin = " << ymin << ", ymax = " << ymax << endl;
+	cout << "zmin = " << zmin << ", zmax = " << zmax << endl;
 
 	// get totalmin
+	totalmin = xmin;
 	if (xmin < ymin){
 		if (xmin < zmin)
 			totalmin = xmin;
@@ -189,13 +190,14 @@ proteinPacking::proteinPacking(string& inputFileString, int NMCPTS){
 			totalmin = zmin;
 	}
 	else{
-		if (ymin > zmin)
+		if (ymin < zmin)
 			totalmin = ymin;
 		else
 			totalmin = zmin;
 	}
 
 	// get totalmax
+	totalmax = xmax;
 	if (xmax > ymax){
 		if (xmax > zmax)
 			totalmax = xmax;
@@ -211,22 +213,35 @@ proteinPacking::proteinPacking(string& inputFileString, int NMCPTS){
 
 	// scale box sizes so they are a little off of the protein
 	if (abs(totalmax) > abs(totalmin))
-		boxscale = 0.25*totalmax;
+		boxscale = 0.25*abs(totalmax);
 	else
-		boxscale = 0.25*totalmin;
+		boxscale = 0.25*abs(totalmin);
 
 	totalmin -= boxscale;
 	totalmax += boxscale;
+	cout << "totalmin = " << totalmin << ", totalmax = " << totalmax << endl;
+
+	// save box boundaries linearly (xmin, xmax, ymin, ymax, zmin, zmax)
+	bounds.resize(2*NDIM);
+	bounds.at(0) = totalmin;
+	bounds.at(1) = totalmax;
+	bounds.at(2) = totalmin;
+	bounds.at(3) = totalmax;
+	bounds.at(4) = totalmin;
+	bounds.at(5) = totalmax;
+
+	// setup container for voronoi
+	cout << "Setting up container for voronoi calculation." << endl;
 
 	// instantiate containerp object
 	cout << "Getting voronoi volumes for normal box size. " << endl;
-	voroContainer = new container_poly(totalmin,totalmax,totalmin,totalmax,totalmin,totalmax,NCELLS,NCELLS,NCELLS,true,true,true,NINIT);
+	voroContainer = new container_poly(totalmin,totalmax,totalmin,totalmax,totalmin,totalmax,NCELLS,NCELLS,NCELLS,false,false,false,NINIT);
 
 	// instantiate slightly larger box, find surface residues
 	totalmin -= 0.25*boxscale;
 	totalmax += 0.25*boxscale;
 	cout << "Getting voronoi volumes for larger box size. " << endl;
-	container_poly largerBox(totalmin,totalmax,totalmin,totalmax,totalmin,totalmax,NCELLS,NCELLS,NCELLS,true,true,true,NINIT);
+	container_poly largerBox(totalmin,totalmax,totalmin,totalmax,totalmin,totalmax,NCELLS,NCELLS,NCELLS,false,false,false,NINIT);
 
 	// loop over atoms and put into container
 	cout << "Putting atoms into both boxes." << endl;
@@ -265,16 +280,26 @@ proteinPacking::proteinPacking(string& inputFileString, int NMCPTS){
 
 	// loop over residues, set volumes to 0 that change with a new box size
 	for (i=0; i<N; i++){
-		if (lBoxVoro.at(i) - resVoro(i) > 1e-4)
-			setVoroVol(i,-1.0*resVoro(i));
+		
 	}
 
-	// calculate everything else
-	cout << "In constructor, now calculating mass" << endl;
-	calcMasses(NMCPTS);
-
-	cout << "In constructor, now calculating neighbors" << endl;
+	// compute neighbors for each residue
 	neighbors();
+
+	// loop over residues, set volumes to - that share at least one voronoi face with the container
+	// OR if the volume changes
+	for (i=0; i<N; i++){
+		if (lBoxVoro.at(i) - resVoro(i) > boxChangeTol)
+			setVoroVol(i,-1.0*resVoro(i));
+		else{
+			for (j=0; j<numResNeighbors(i); j++){
+				if (resNeighbors(i,j) == -1){
+					setVoroVol(i,-1.0*resVoro(i));
+					break;
+				}
+			}
+		}
+	}
 }
 
 // destructor
@@ -832,7 +857,7 @@ void proteinPacking::neighbors(){
 		// get residue index
 		residueIndex = resID(cl.pid());
 
-		// check neighbors of cell c
+		// check neighbors of atom in cell c
 		c.neighbors(neigh);
 	
 		// loop over each neighbor of cell c, if new neighbor found add to neighbor list	
@@ -840,9 +865,13 @@ void proteinPacking::neighbors(){
 			// check for new/unique neighbors
 			uqFound = 1;
 
+			// if neighbor is part of this residue, skip
+			if (resID(neigh.at(i)) == residueIndex)
+				continue;
+
 			// loop over neighbors already found
-			for (j=0; j<voroNeighbors[residueIndex].size(); j++){
-				if (resID(neigh.at(i)) == voroNeighbors[residueIndex].at(j)){
+			for (j=0; j<numResNeighbors(residueIndex); j++){
+				if (resID(neigh.at(i)) == resNeighbors(residueIndex,j)){
 					uqFound = 0;
 					break;
 				}
@@ -889,3 +918,122 @@ void proteinPacking::printPackingFraction(){
 		
 	}
 }
+
+
+
+void proteinPacking::printSingleVoronoiCell(int i){
+	// local variables
+	int atot, aloc, atest, w1, w2, w3, n, j, k;
+	int natmp, nvtmp;
+	double x,y,z;
+	voro::voronoicell_neighbor c;
+	vector<int> f_vert, neigh;
+	vector<double> v;
+
+	// check that voronoi file output object is open
+	if (!voronoiFile.is_open()){
+		cout << "	** ERROR: voronoi file is not open in printVoronoiCells(), ending." << endl;
+		exit(1);
+	}
+
+	// output widths
+	w1 = 6;
+	w2 = 10;
+	w3 = 20;
+
+	// print initial residue information
+	voronoiFile << setw(w1) << i;
+	voronoiFile << setw(w2) << getSeq(i);
+	voronoiFile << setw(w2) << size(i);
+	voronoiFile << endl;
+
+	// loop over atoms, print voronoi cell information 
+	// i.e. vertex positions and which vertex belongs to which face
+	c_loop_all cl(*voroContainer);
+	if (cl.start()) do if(voroContainer->compute_cell(c,cl)) {
+		// get atomic id
+		atot = cl.pid();
+
+		// skip if atom id does not coincide with resid i
+		if (resID(atot) != i)
+			continue;
+
+		// get local label of atom
+		aloc = atot - cumulativeNumberOfAtoms(i);
+
+		// check that labelling is done correctly
+		atest = atomID(i,aloc);
+		if (atest != atot){
+			cout << "	** ERROR: atom labelling done incorrectly in printSingleVoronoiCell(), ending. " << endl;
+			exit(1);
+		}
+
+		// print atomic information corresponding to this residue
+		voronoiFile << setw(w1) << aloc;
+		voronoiFile << setw(w2) << getAtom(atot);
+		voronoiFile << setw(w2) << rad(atot);
+		voronoiFile << setw(w3) << pos(atot,0);
+		voronoiFile << setw(w3) << pos(atot,1);
+		voronoiFile << setw(w3) << pos(atot,2);
+		voronoiFile << endl;
+
+		// get face vertex information
+		cl.pos(x,y,z);
+		c.neighbors(neigh);
+		c.face_vertices(f_vert);
+		c.vertices(x,y,z,v);
+
+		// loop over vertices, print coordinates to file
+		nvtmp = v.size()/3;
+		voronoiFile << setw(w1) << nvtmp << endl;
+		for (j=0; j<nvtmp; j++){
+			voronoiFile << setw(w1) << j;
+			voronoiFile << setw(w3) << v[3*j];
+			voronoiFile << setw(w3) << v[3*j + 1];
+			voronoiFile << setw(w3) << v[3*j + 2];
+			voronoiFile << endl;
+		}
+
+		// Loop over faces, print which vertices map to which face
+		// 	NOTE: face info stored as (f, v1, v2, ..., vf), where f is number of vertices
+		// 	per face, and v1, ..., vf are the f vertex labels corresponding to this face
+
+		voronoiFile << setw(w1) << neigh.size() << endl;
+		j=0;
+		for (n=0; n<neigh.size(); n++){
+			// output face index and number of vertices / face
+			voronoiFile << setw(w1) << f_vert[j];
+
+			// loop over vertices on face, print indices
+			for (k=0; k<f_vert[j]; k++)
+				voronoiFile << setw(w2) << f_vert[j+k+1];
+
+			// go to next face
+			j += f_vert[j]+1;
+
+			// print new line
+			voronoiFile << endl;
+		}
+	} while (cl.inc());
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

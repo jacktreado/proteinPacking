@@ -31,6 +31,9 @@ private:
 	// number of residues
 	int N;
 
+	// vector of box boundaries
+	std::vector<double> bounds;
+
 	// number of atoms in each residue
 	int* residueSize;
 
@@ -52,10 +55,11 @@ private:
 
 	// file information
 	std::ofstream packingFile;
+	std::ofstream voronoiFile;
 public:
 	// constructors
 	proteinPacking();
-	proteinPacking(std::string& inputFileString, int NMCPTS);
+	proteinPacking(std::string& inputFileString);
 
 	// destructors
 	~proteinPacking();
@@ -64,7 +68,17 @@ public:
 	void openPackingFile(std::string& str){
 		packingFile.open(str.c_str());
 		if (!packingFile.is_open()){
-			std::cout << "	ERROR: packing file not open, file string " << str << " is not functioning, ending." << std::endl; exit(1);
+			std::cout << "	ERROR: packing file not open, file string " << str << " is not functioning, ending." << std::endl; 
+			exit(1);
+		}
+	}
+
+
+	void openVoronoiFile(std::string& str){
+		voronoiFile.open(str.c_str());
+		if (!voronoiFile.is_open()){
+			std::cout << "	ERROR: voronoi file not open, file string " << str << " is not functioning, ending." << std::endl; 
+			exit(1);
 		}
 	}
 
@@ -80,6 +94,9 @@ public:
 	void setVoroVol(int residue, double val);
 
 	// getters
+	int getNA() { return NA; };
+	int getN() { return N; };
+	double getBound(int d, int edge) { return bounds.at(2*d + edge); };
 	int cumulativeNumberOfAtoms(int residue);
 	int atomID(int residue, int atom);
 	int resID(int atom);
@@ -102,6 +119,9 @@ public:
 
 	// printers
 	void printPackingFraction();
+	void printSingleVoronoiCell(int i);
+	void printToVoroFile(int val) { voronoiFile << val << std::endl; };
+	void printToVoroFile(double val) { voronoiFile << val << std::endl; };
 };
 
 #endif

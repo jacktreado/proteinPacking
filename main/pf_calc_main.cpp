@@ -17,7 +17,7 @@ int main(int argc, char *argv[]){
 	// read in data
 	string inputFileStr 	= argv[1]; 			// input pdb string
 	string outputFileStr 	= argv[2]; 			// output pf file string
-	string nmcptsStr 			= argv[3]; 		// number of monte carlo points for particle mass
+	string nmcptsStr 		= argv[3]; 		// number of monte carlo points for particle mass
 
 	// MC variables
 	double nmcpts_dbl;
@@ -29,7 +29,14 @@ int main(int argc, char *argv[]){
 
 	// instantiate object
 	cout << "Instantiating object..." << endl;
-	proteinPacking pobj(inputFileStr,nmcpts);
+	proteinPacking pobj(inputFileStr);
+
+	// compute masses
+	cout << "Calculating masses..." << endl;
+	pobj.calcMasses(nmcpts);
+
+	cout << "Calculating neighbors..." << endl;
+	pobj.neighbors();
 
 	// print packing fraction data to file
 	cout << "Opening packing file " << outputFileStr << endl;
