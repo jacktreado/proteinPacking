@@ -906,14 +906,14 @@ void proteinPacking::printPackingFraction(){
 	for (i=0; i<N; i++){
 		packingFile << setw(6) << i+1;
 		packingFile << setw(10) << getSeq(i);
-		packingFile << setw(15) << mass(i);
-		packingFile << setw(15) << resVoro(i);
+		packingFile << setw(25) << mass(i);
+		packingFile << setw(25) << resVoro(i);
 
 		// if voronoi < 0, then on surface and has 0 packing fraction
 		if (resVoro(i)<0)
-			packingFile << setw(15) << 0.0 << endl;
+			packingFile << setw(25) << 0.0 << endl;
 		else
-			packingFile << setw(15) << mass(i)/resVoro(i) << endl;
+			packingFile << setw(25) << mass(i)/resVoro(i) << endl;
 		
 	}
 }
